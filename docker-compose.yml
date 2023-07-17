@@ -1,0 +1,31 @@
+version: '3.7'
+
+services:
+  nginx:
+    image: nginx:latest
+    restart: always
+    volumes:
+      - './nginx.conf:/etc/nginx/nginx.conf:ro'
+      - './static:/static'
+    ports:
+      - '2485:8080'
+  postgres:
+    image: postgres:14
+    volumes:
+      - pgdata:/var/lib/postgresql/data/
+    ports:
+      - '5687:5432'
+    env_file:
+      - .env
+  app:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    command: 'uvicorn main:app --port 8000 --host 0.0.0.0 --workers 1'
+    volumes:
+      - ./app:/code
+    env_file:
+      - .env
+
+volumes:
+  pgdata:
