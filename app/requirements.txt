@@ -1,0 +1,8 @@
+alembic
+sqlalchemy~=2.0
+psycopg2-binary
+asyncpg
+uvicorn[standard]~=0.17.6
+FastApi~=0.78.0
+fastapi-camelcase
+xxhash
