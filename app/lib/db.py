@@ -25,3 +25,13 @@ async def get_session() -> AsyncSession:
         finally:
             await session.rollback()
             await session.close()
+
+
+async def get_session_link() -> AsyncSession:
+    async_session = sessionmaker(
+        engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+    )
+    async with async_session.begin() as session:
+        return session

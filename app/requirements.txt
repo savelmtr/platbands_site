@@ -5,4 +5,7 @@ asyncpg
 uvicorn[standard]~=0.17.6
 FastApi~=0.78.0
 fastapi-camelcase
-xxhash
+python-jose
+passlib[bcrypt]
+python-multipart
+pydantic[email]
