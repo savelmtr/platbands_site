@@ -22,3 +22,7 @@ class HTTP500(_HTTPAny):
 
 class HTTP400(_HTTPAny):
     status_code = status.HTTP_400_BAD_REQUEST
+
+
+class HTTP401(_HTTPAny):
+    status_code = 401

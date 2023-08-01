@@ -6,7 +6,7 @@ from lib.viewmodel import UserModel
 from lib.schemas import UserLoginSchema, TokenSchema
 from lib.utils import verify_password, signJWT
 from lib.bearer import JWTBearer
-
+from lib.exceptions import HTTP400, HTTP500, HTTP401
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -19,17 +19,14 @@ async def login(
     model = UserModel(session)
     user = await model.get(login_data.email)
     if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Активного пользователя с email {login_data.email} не существует."
-        )
+        raise HTTP401({
+            'for': 'email',
+            'text': f"Активного пользователя с email {login_data.email} не существует."
+        })
 
     hashed_pass = user.password
     if not verify_password(login_data.password, hashed_pass):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Неверный пароль"
-        )
+        raise HTTP401({'for': 'password', 'text': "Неверный пароль"})
     
     return signJWT(user.email)
 
