@@ -31,6 +31,18 @@ services:
     env_file:
       - .env
     depends_on:
+      init:
+        condition: service_completed_successfully
+  init:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    command: alembic upgrade head
+    volumes:
+      - ./app:/code
+    env_file:
+      - .env
+    depends_on:
       postgres:
         condition: service_healthy
 
