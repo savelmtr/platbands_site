@@ -9,3 +9,5 @@ python-jose
 passlib[bcrypt]
 python-multipart
 pydantic[email]
+aiofile
+xxhash

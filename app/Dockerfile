@@ -12,4 +12,4 @@ COPY requirements.txt .
 RUN pip install --no-warn-script-location --disable-pip-version-check \
     -r requirements.txt
 
-CMD [ "python", "main.py" ]
+CMD [ "python", "general/main.py" ]

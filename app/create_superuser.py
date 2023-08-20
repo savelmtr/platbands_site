@@ -1,8 +1,8 @@
-from lib.viewmodel import UserModel
+from users.viewmodel import UserModel
 from lib.db import get_session_link
 import asyncio
-from lib.schemas import UserSchema
-from lib.utils import get_hashed_password
+from users.schemas import UserSchema
+from users.utils import get_hashed_password
 
 
 async def main():

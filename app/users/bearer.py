@@ -1,7 +1,7 @@
 from fastapi import Request, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
-from lib.utils import decodeJWT
+from .utils import decodeJWT
 
 
 class JWTBearer(HTTPBearer):

@@ -47,37 +47,17 @@
   import { computed, ref, watch } from 'vue'
   import { useRouter } from 'vue-router'
   import APIUrls from '@/_urls.js'
-  import { useStore } from 'vuex'
-
+  import { LoginData, Payload } from '../../interfaces'
+  
   const email = ref('')
   const password = ref('')
-  const keepLoggedIn = ref(false)
+  // const keepLoggedIn = ref(false)
   const emailErrors = ref<string[]>([])
   const passwordErrors = ref<string[]>([])
   const router = useRouter()
-  const store = useStore()
+
 
   const formReady = computed(() => !emailErrors.value.length && !passwordErrors.value.length)
-
-  class LoginData {
-    email: string
-    password: string
-
-    constructor(email: string, password: string) {
-      this.email = email
-      this.password = password
-    }
-  }
-
-  class Detail {
-    for: string
-    text: string
-  }
-
-  interface Payload {
-    detail?: Detail
-    accessToken?: string
-  }
 
   async function onsubmit() {
     if (!formReady.value) return
@@ -86,9 +66,22 @@
     passwordErrors.value = password.value ? [] : ['Password is required']
 
     if (emailErrors.value.length || passwordErrors.value.length) return
-    let login_result = await login(new LoginData(email.value, password.value))
+
+    let login_result = await login({'email': email.value, 'password': password.value})
     if (login_result === true) {
       router.push({ name: 'admin' })      
+    }
+  }
+
+  function setOnLoginError(payload: Payload) {
+    switch (payload.detail!.for) {
+      case 'email':
+        emailErrors.value = [payload.detail!.text]
+        passwordErrors.value = []
+        break
+      case 'password':
+        emailErrors.value = []
+        passwordErrors.value = [payload.detail!.text]
     }
   }
 
@@ -102,24 +95,11 @@
     let payload: Payload;
     if (request.ok) {
       payload = await request.json()
-      if (payload.accessToken) {
-        localStorage.setItem('accessToken', payload.accessToken);
-      }
-      console.log(store)
+      localStorage.setItem('accessToken', payload.accessToken!)
       return true
     } else if (request.status == 401) {
       payload = await request.json()
-      if (payload.detail) {
-        switch (payload.detail.for) {
-          case 'email':
-            emailErrors.value = [payload.detail.text]
-            passwordErrors.value = []
-            break
-          case 'password':
-            emailErrors.value = []
-            passwordErrors.value = [payload.detail.text]
-        }
-      }
+      setOnLoginError(payload)
     } else {
       console.log(`Ошибка при запросе к эндпойнту ${APIUrls.login}. Статус: ${request.status}`)
     }
