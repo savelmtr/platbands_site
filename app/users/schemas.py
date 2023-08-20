@@ -10,7 +10,7 @@ class UserLoginSchema(CamelModel):
 
 
 class UserSchema(UserLoginSchema):
-    id: UUID
+    id: UUID|None=None
     is_active: bool
     last_login: datetime.datetime|None
     role: int

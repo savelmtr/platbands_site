@@ -2,6 +2,7 @@ import base64
 import datetime
 from pathlib import Path
 from uuid import UUID
+from .enums import RolesEnum
 from general import settings
 from sqlalchemy.ext.asyncio import AsyncSession
 from .schemas import UserSchema, PasswordResetTokenSchema
@@ -11,8 +12,12 @@ from sqlalchemy.dialects.postgresql import insert
 from .utils import generate_reset_password_hash, get_hashed_password
 from lib.utils import email_backend
 from aiofile import async_open
-from lib.exceptions import HTTP400
+from lib.exceptions import HTTP400, HTTP403
 from sqlalchemy import update
+from fastapi import Depends, Request
+from users.bearer import JWTBearer
+from lib.db import get_session
+from pydantic import parse_obj_as
 
 
 class UserModel:
@@ -33,9 +38,11 @@ class UserModel:
         return UserSchema.from_orm(user) if user else user
 
     async def create(self, user: UserSchema) -> UserSchema:
+        user_dict = user.dict()
+        del user_dict['id']
         req = (
             insert(User)
-            .values(**user.dict())
+            .values(**user_dict)
             .on_conflict_do_nothing(index_elements=['email'])
             .returning(User)
         )
@@ -102,3 +109,28 @@ class UserModel:
         user = await self.check_reset_password_token(data.token)
         new_password = get_hashed_password(data.password)
         await self.update(user.id, {'password': new_password})
+
+    async def search(self, q: str, page: int=0):
+        req = select(User).limit(settings.LIMIT_ADMIN_PANEL).offset(
+            page * settings.LIMIT_ADMIN_PANEL).order_by(User.email)
+        if q:
+            req = req.where(User.email.ilike(f'%{q}%'))
+        q = await self.session.execute(req)
+        users =  q.scalars().all()
+        print(users)
+        return parse_obj_as(list[UserSchema], users)
+
+
+class RoleKeeper(JWTBearer):
+    def __init__(self, roles: list[RolesEnum], auto_error: bool = True):
+        super().__init__(auto_error)
+        self.roles = {r.value for r in roles}
+
+    async def __call__(self, request: Request, session: AsyncSession=Depends(get_session)):
+        payload = await super().__call__(request=request)
+        model = UserModel(session)
+        user = await model.get(email=payload['user_id'])
+        if not user:
+            raise HTTP400('Пользователя не существует.')
+        elif user.role not in self.roles:
+            raise HTTP403('Недостаточно прав для выполнения действия.')

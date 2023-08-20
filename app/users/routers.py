@@ -2,10 +2,11 @@ from fastapi import APIRouter, Body, Depends
 from users.bearer import JWTBearer
 from lib.db import get_session
 from lib.exceptions import HTTP400, HTTP401
-from .schemas import TokenSchema, UserLoginSchema, PasswordResetSchema, PasswordResetTokenSchema
+from .schemas import TokenSchema, UserLoginSchema, UserSchema, PasswordResetSchema, PasswordResetTokenSchema
 from .utils import signJWT, verify_password
-from .viewmodel import UserModel
+from .viewmodel import UserModel, RoleKeeper
 from sqlalchemy.ext.asyncio import AsyncSession
+from .enums import RolesEnum
 
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -46,7 +47,7 @@ async def reset_pass(
 
 
 @router.post('/reset', summary='Сброс пароля')
-async def reset_pass(
+async def reset_(
     data: PasswordResetTokenSchema = Body(),
     session: AsyncSession=Depends(get_session)
 ) -> None:
@@ -55,6 +56,18 @@ async def reset_pass(
         await model.reset(data)
     else:
         await model.check_reset_password_token(data.token)
+
+
+
+@router.get('/', summary='Users list')
+async def list_users(
+    query: str='',
+    page: int=0,
+    credentials = Depends(RoleKeeper([RolesEnum.SuperUser])),
+    session: AsyncSession=Depends(get_session)
+) -> list[UserSchema]:
+    model = UserModel(session)
+    return await model.search(q=query, page=page)
 
 
 @router.get('/me', summary='Get details of currently logged in user')

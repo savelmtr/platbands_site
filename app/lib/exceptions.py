@@ -26,3 +26,7 @@ class HTTP400(_HTTPAny):
 
 class HTTP401(_HTTPAny):
     status_code = 401
+
+
+class HTTP403(_HTTPAny):
+    status_code = 403
