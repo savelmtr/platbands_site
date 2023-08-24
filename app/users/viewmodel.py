@@ -51,12 +51,13 @@ class UserModel:
         assert new_user is not None, f'Пользователь с email {user.email} уже существует'
         await self.session.commit()
         return UserSchema.from_orm(new_user)
-    
-    async def update(self, userid: UUID, values: dict):
-        req = update(User).where(User.id == userid).values(**values)
-        await self.session.execute(req)
+
+    async def update(self, userid: UUID, values: dict) -> User:
+        req = update(User).where(User.id == userid).values(**values).returning(User)
+        q = await self.session.execute(req)
         await self.session.commit()
-    
+        return UserSchema.from_orm(res) if (res := q.scalar()) else res
+
     async def apply_template(self, template_name: str, dict_for_template: dict):
         async with async_open(Path(self.templates_dir) / template_name, 'r') as af:
             template = await af.read()
@@ -100,8 +101,7 @@ class UserModel:
         if (user := await self.get(id_=userid)) is None:
             raise HTTP400('Пользователя не существует.')
         test_token = generate_reset_password_hash(user, day)
-        test_hash = test_token.split('-')[-1]
-        if test_hash != token:
+        if test_token != initial_token:
             raise HTTP400('Неверный токен.')
         return user
 
@@ -117,7 +117,6 @@ class UserModel:
             req = req.where(User.email.ilike(f'%{q}%'))
         q = await self.session.execute(req)
         users =  q.scalars().all()
-        print(users)
         return parse_obj_as(list[UserSchema], users)
 
 

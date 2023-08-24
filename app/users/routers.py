@@ -1,3 +1,4 @@
+from uuid import UUID
 from fastapi import APIRouter, Body, Depends
 from users.bearer import JWTBearer
 from lib.db import get_session
@@ -58,7 +59,6 @@ async def reset_(
         await model.check_reset_password_token(data.token)
 
 
-
 @router.get('/', summary='Users list')
 async def list_users(
     query: str='',
@@ -70,8 +70,42 @@ async def list_users(
     return await model.search(q=query, page=page)
 
 
-@router.get('/me', summary='Get details of currently logged in user')
-async def get_me(credentials = Depends(JWTBearer()), session: AsyncSession=Depends(get_session)):
+@router.get('/{id_}', summary='Users list')
+async def get_user(
+    id_: UUID,
+    credentials = Depends(RoleKeeper([RolesEnum.SuperUser])),
+    session: AsyncSession=Depends(get_session)
+) -> UserSchema:
     model = UserModel(session)
-    user = await model.get(credentials['user_id'])
-    return user
+    return await model.get(id_=id_)
+
+
+@router.post('/', summary='Create user')
+async def create_user(
+    body: UserSchema = Body(...),
+    credentials = Depends(RoleKeeper([RolesEnum.SuperUser])),
+    session: AsyncSession=Depends(get_session)
+) -> UserSchema:
+    model = UserModel(session)
+    return await model.create(body)
+
+
+@router.patch('/', summary='Update user')
+async def update_user(
+    body: UserSchema = Body(...),
+    credentials = Depends(RoleKeeper([RolesEnum.SuperUser])),
+    session: AsyncSession=Depends(get_session)
+) -> UserSchema:
+    model = UserModel(session)
+    id_ = body.id
+    if not id_:
+        raise HTTP400('Для обновления данных пользователя необходим id')
+    values = body.dict()
+    del values['id']
+    return await model.update(id_, values)
+
+# @router.get('/me', summary='Get details of currently logged in user')
+# async def get_me(credentials = Depends(JWTBearer()), session: AsyncSession=Depends(get_session)):
+#     model = UserModel(session)
+#     user = await model.get(credentials['user_id'])
+#     return user
