@@ -7,12 +7,12 @@ const routes = [
     name: 'admin',
     path: '/',
     component: DefaultLayout,
-    redirect: { name: 'articles' },
+    redirect: { name: 'users' },
     children: [
       {
-        path: '/articles',
-        name: 'articles',
-        component: () => import('../views/ArticlesList.vue')
+        path: '/users',
+        name: 'users',
+        component: () => import('../views/Userlist.vue')
       },
     ]
   },

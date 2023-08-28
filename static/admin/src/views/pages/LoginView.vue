@@ -28,10 +28,11 @@
                 :error="!!passwordErrors.length"
                 :error-messages="passwordErrors"
               />
-
-              <div style="display: flex; align-items: center; justify-content: space-between;">
-                  <va-button round type="submit" class="my-0" @click="onsubmit">Войти</va-button>
-                  <router-link class="ml-1 va-link" :to="{ name: 'recover-password' }">
+              
+              <va-checkbox v-model="keepLoggedIn" class="mb-4" label="Запомнить меня" />
+              <div class="flex items-center justify-between">
+                  <va-button round type="submit" class="my-0 grow-0" @click="onsubmit">Войти</va-button>
+                  <router-link class="ml-1 va-link grow-0" :to="{ name: 'recover-password' }">
                     Восстановить пароль
                   </router-link>
               </div>
@@ -44,14 +45,15 @@
 </template>
 
 <script setup lang="ts">
-  import { computed, ref, watch } from 'vue'
-  import { useRouter } from 'vue-router'
-  import APIUrls from '@/_urls.js'
-  import { LoginData, Payload } from '../../interfaces'
+import { computed, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import APIUrls from '@/_urls.js'
+import { LoginData, SuccessPayload, ErrorPayload } from '../../interfaces'
+import { setStorage, setToken, storage } from '../../_auth';
   
   const email = ref('')
   const password = ref('')
-  // const keepLoggedIn = ref(false)
+  const keepLoggedIn = ref(localStorage.getItem('tokenStorage'))
   const emailErrors = ref<string[]>([])
   const passwordErrors = ref<string[]>([])
   const router = useRouter()
@@ -65,23 +67,24 @@
     emailErrors.value = email.value ? [] : ['Email is required']
     passwordErrors.value = password.value ? [] : ['Password is required']
 
-    if (emailErrors.value.length || passwordErrors.value.length) return
+    if (!formReady.value) return
 
+    setStorage(keepLoggedIn.value);
     let login_result = await login({'email': email.value, 'password': password.value})
     if (login_result === true) {
       router.push({ name: 'admin' })      
     }
   }
 
-  function setOnLoginError(payload: Payload) {
-    switch (payload.detail!.for) {
+  function setOnLoginError(payload: ErrorPayload) {
+    switch (payload.detail.for) {
       case 'email':
-        emailErrors.value = [payload.detail!.text]
+        emailErrors.value = [payload.detail.text]
         passwordErrors.value = []
         break
       case 'password':
         emailErrors.value = []
-        passwordErrors.value = [payload.detail!.text]
+        passwordErrors.value = [payload.detail.text]
     }
   }
 
@@ -92,13 +95,13 @@
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify(data),
     })
-    let payload: Payload;
+    let payload: SuccessPayload | ErrorPayload;
     if (request.ok) {
-      payload = await request.json()
-      localStorage.setItem('accessToken', payload.accessToken!)
+      payload = await request.json() as SuccessPayload
+      setToken(payload.accessToken)
       return true
     } else if (request.status == 401) {
-      payload = await request.json()
+      payload = await request.json() as ErrorPayload
       setOnLoginError(payload)
     } else {
       console.log(`Ошибка при запросе к эндпойнту ${APIUrls.login}. Статус: ${request.status}`)

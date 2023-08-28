@@ -1,6 +1,5 @@
 from uuid import UUID
 from fastapi import APIRouter, Body, Depends
-from users.bearer import JWTBearer
 from lib.db import get_session
 from lib.exceptions import HTTP400, HTTP401
 from .schemas import TokenSchema, UserLoginSchema, UserSchema, PasswordResetSchema, PasswordResetTokenSchema
@@ -11,6 +10,13 @@ from .enums import RolesEnum
 
 
 router = APIRouter(prefix="/users", tags=["users"])
+
+
+@router.get('/admin_test', summary='Get details of currently logged in user')
+async def test_token(
+    credentials = Depends(RoleKeeper([RolesEnum.SuperUser, RolesEnum.Admin, RolesEnum.Moderator]))
+):
+    return {'result': True}
 
 
 @router.post('/login', summary="Создаёт access и refresh токены", response_model=TokenSchema)
@@ -104,8 +110,4 @@ async def update_user(
     del values['id']
     return await model.update(id_, values)
 
-# @router.get('/me', summary='Get details of currently logged in user')
-# async def get_me(credentials = Depends(JWTBearer()), session: AsyncSession=Depends(get_session)):
-#     model = UserModel(session)
-#     user = await model.get(credentials['user_id'])
-#     return user
+

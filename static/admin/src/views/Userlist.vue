@@ -29,10 +29,22 @@
 </template>
 <script setup lang="ts">
 import type { Ref } from 'vue'
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { UserInList } from '../_types'
+import APIUrls from '../_urls'
+import { getToken } from '../_auth';
+
 
 const users: Ref<UserInList[]> = ref([])
 
-
+onMounted(async () => {
+  let r = await fetch(APIUrls.usersCRUD, {
+    headers: {
+      Authorization: `Bearer ${getToken()}`
+    }
+  });
+  if (r.ok) {
+    users.value = await r.json();
+  }
+})
 </script>

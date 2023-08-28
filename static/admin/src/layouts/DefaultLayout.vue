@@ -10,29 +10,24 @@
     </div>
   </div>
 </template>
-<script lang="ts">
-import Sidebar from '../components/Sidebar.vue'
-import { ref } from 'vue';
-import { useRouter } from 'vue-router'
-import { useStore } from 'vuex'
-
-export default {
-  name: 'DefaultLayout',
-  components: { Sidebar }
-}
-</script>
 <script setup lang="ts">
+import Sidebar from '../components/Sidebar.vue'
+import { onMounted, ref } from 'vue';
+import { useRouter } from 'vue-router'
+import { isAuthorized } from '../_auth'
 
-  const router = useRouter()
-  const store = useStore()
-  const showContent = ref(false)
 
-  if (!localStorage.getItem('accessToken')) {
-    router.push({'name': 'login'})
+const router = useRouter()
+const showContent = ref(false)
+
+onMounted(async () => {
+  if (await isAuthorized()) {
+    showContent.value = true;
   } else {
-    showContent.value = true
+    router.push({'name': 'login'});
   }
-  console.log(localStorage.getItem('accessToken'))
+})
+
 </script>
 <style lang="scss">
   $mobileBreakPointPX: 640px;

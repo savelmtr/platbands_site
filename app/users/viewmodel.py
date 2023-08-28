@@ -35,7 +35,7 @@ class UserModel:
             req = req.where(User.email == email)
         q = await self.session.execute(req)
         user = q.scalar()
-        return UserSchema.from_orm(user) if user else user
+        return UserSchema.from_orm(user) if user is not None else user
 
     async def create(self, user: UserSchema) -> UserSchema:
         user_dict = user.dict()
@@ -133,3 +133,4 @@ class RoleKeeper(JWTBearer):
             raise HTTP400('Пользователя не существует.')
         elif user.role not in self.roles:
             raise HTTP403('Недостаточно прав для выполнения действия.')
+        return payload

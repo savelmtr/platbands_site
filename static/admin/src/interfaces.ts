@@ -8,9 +8,13 @@ interface Detail {
   text: string
 }
 
-interface Payload {
-  detail?: Detail
-  accessToken?: string
+interface SuccessPayload {
+  accessToken: string
 }
 
-export { LoginData, Detail, Payload }
+
+interface ErrorPayload {
+  detail: Detail
+}
+
+export { LoginData, Detail, SuccessPayload, ErrorPayload }
