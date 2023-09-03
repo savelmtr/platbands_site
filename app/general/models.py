@@ -15,6 +15,7 @@ class User(Base):
     password = Column(String, nullable=False)
     is_active = Column(Boolean, default=False, server_default='False', nullable=False)
     last_login = Column(DateTime(timezone=True), nullable=True)
+    username = Column(String)
     role = Column(Integer, server_default=text('0'), default=0, nullable=False)
 
 
