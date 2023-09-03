@@ -1,12 +1,16 @@
+import datetime
 from uuid import UUID
+
 from fastapi import APIRouter, Body, Depends
 from lib.db import get_session
 from lib.exceptions import HTTP400, HTTP401
-from .schemas import TokenSchema, UserLoginSchema, UserSchema, PasswordResetSchema, PasswordResetTokenSchema
-from .utils import signJWT, verify_password
-from .viewmodel import UserModel, RoleKeeper
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from .enums import RolesEnum
+from .schemas import (PasswordResetSchema, PasswordResetTokenSchema, SearchUserOut,
+                      TokenSchema, UserLoginSchema, UserOutSchema, UserSchema)
+from .utils import signJWT, verify_password
+from .viewmodel import RoleKeeper, UserModel
 
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -36,6 +40,9 @@ async def login(
     if not verify_password(login_data.password, hashed_pass):
         raise HTTP401({'for': 'password', 'text': "Неверный пароль"})
     
+    await model.update(user.id, {
+        'last_login': datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
+    })
     return signJWT(user.email)
 
 
@@ -68,10 +75,10 @@ async def reset_(
 @router.get('/', summary='Users list')
 async def list_users(
     query: str='',
-    page: int=0,
+    page: int=1,
     credentials = Depends(RoleKeeper([RolesEnum.SuperUser])),
     session: AsyncSession=Depends(get_session)
-) -> list[UserSchema]:
+) -> SearchUserOut:
     model = UserModel(session)
     return await model.search(q=query, page=page)
 
@@ -81,9 +88,10 @@ async def get_user(
     id_: UUID,
     credentials = Depends(RoleKeeper([RolesEnum.SuperUser])),
     session: AsyncSession=Depends(get_session)
-) -> UserSchema:
+) -> UserOutSchema|None:
     model = UserModel(session)
-    return await model.get(id_=id_)
+    user = await model.get(id_=id_)
+    return UserOutSchema(**user.dict()) if user else user
 
 
 @router.post('/', summary='Create user')

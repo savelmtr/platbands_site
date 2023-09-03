@@ -9,14 +9,26 @@ class UserLoginSchema(CamelModel):
     password: str
 
 
-class UserSchema(UserLoginSchema):
+class UserOutSchema(CamelModel):
+    """ Схема без пароля, для просмотра данных """
+    email: EmailStr
     id: UUID|None=None
     is_active: bool
     last_login: datetime.datetime|None
+    username: str|None
     role: int
 
     class Config:
         orm_mode=True
+
+
+class UserSchema(UserLoginSchema, UserOutSchema):
+    ...
+
+
+class SearchUserOut(CamelModel):
+    count: int
+    users: list[UserOutSchema]
 
 
 class TokenSchema(CamelModel):

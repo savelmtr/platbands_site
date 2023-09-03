@@ -2,22 +2,25 @@ import base64
 import datetime
 from pathlib import Path
 from uuid import UUID
-from .enums import RolesEnum
-from general import settings
-from sqlalchemy.ext.asyncio import AsyncSession
-from .schemas import UserSchema, PasswordResetTokenSchema
-from sqlalchemy.future import select
-from general.models import User
-from sqlalchemy.dialects.postgresql import insert
-from .utils import generate_reset_password_hash, get_hashed_password
-from lib.utils import email_backend
+
 from aiofile import async_open
-from lib.exceptions import HTTP400, HTTP403
-from sqlalchemy import update
 from fastapi import Depends, Request
-from users.bearer import JWTBearer
+from general import settings
+from general.models import User
 from lib.db import get_session
+from lib.exceptions import HTTP400, HTTP403
+from lib.utils import email_backend
 from pydantic import parse_obj_as
+from sqlalchemy import func, update
+from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
+from users.bearer import JWTBearer
+
+from .enums import RolesEnum
+from .schemas import (PasswordResetTokenSchema, SearchUserOut, UserOutSchema,
+                      UserSchema)
+from .utils import generate_reset_password_hash, get_hashed_password
 
 
 class UserModel:
@@ -40,6 +43,7 @@ class UserModel:
     async def create(self, user: UserSchema) -> UserSchema:
         user_dict = user.dict()
         del user_dict['id']
+        user_dict['password'] = get_hashed_password(user_dict['password'])
         req = (
             insert(User)
             .values(**user_dict)
@@ -54,6 +58,11 @@ class UserModel:
 
     async def update(self, userid: UUID, values: dict) -> User:
         req = update(User).where(User.id == userid).values(**values).returning(User)
+        if 'password' in values:
+            if not values['password']:
+                del values['password']
+            else:
+                values['password'] = get_hashed_password(values['password'])
         q = await self.session.execute(req)
         await self.session.commit()
         return UserSchema.from_orm(res) if (res := q.scalar()) else res
@@ -110,14 +119,24 @@ class UserModel:
         new_password = get_hashed_password(data.password)
         await self.update(user.id, {'password': new_password})
 
-    async def search(self, q: str, page: int=0):
+    async def search(self, q: str, page: int=1) -> SearchUserOut:
+        page -= 1
         req = select(User).limit(settings.LIMIT_ADMIN_PANEL).offset(
             page * settings.LIMIT_ADMIN_PANEL).order_by(User.email)
+        conditions = []
         if q:
-            req = req.where(User.email.ilike(f'%{q}%'))
+            conditions.append(User.email.ilike(f'%{q}%') | User.username.ilike(f'%{q}%'))
+        req = req.where(*conditions)
         q = await self.session.execute(req)
         users =  q.scalars().all()
-        return parse_obj_as(list[UserSchema], users)
+        pages_req = select(func.count(User.id)).where(*conditions)
+        q = await self.session.execute(pages_req)
+        total_users = q.scalar()
+        total_p = total_users // settings.LIMIT_ADMIN_PANEL + int(bool(total_users % settings.LIMIT_ADMIN_PANEL))
+        return SearchUserOut(
+            count=total_p,
+            users=parse_obj_as(list[UserOutSchema], users)
+        )
 
 
 class RoleKeeper(JWTBearer):

@@ -11,8 +11,14 @@ async def main():
     try:
         model = UserModel(session)
         email = input('Введите email:')
-        password = get_hashed_password(input('Введите пароль:'))
-        await model.create(UserSchema(email=email, password=password, is_active=True, role=RolesEnum.SuperUser.value))
+        password = input('Введите пароль:')
+        await model.create(UserSchema(
+            email=email,
+            password=password,
+            username='Superuser',
+            is_active=True,
+            role=RolesEnum.SuperUser.value
+        ))
     finally:
         await session.close()
 
